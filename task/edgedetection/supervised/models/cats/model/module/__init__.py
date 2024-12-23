@@ -1,0 +1,1 @@
+from .cofusion import CoFusion

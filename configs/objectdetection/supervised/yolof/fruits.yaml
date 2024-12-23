@@ -1,0 +1,351 @@
+EXP_NAME: YOLOF
+TASK: objectdetection
+METHOD: supervised
+API_KEY: 'c1d91b9d8d01d41c563d2ed88216016fef6fdf5a' # tài khoản wandb
+SEED: 42
+
+DATASET:
+    datadir: 'datasets/object_detection_data'
+    target: 'fruits'
+    resize: 
+        - 800 # height
+        - 800 # width
+    mode: True
+    keep_difficult: False
+    use_mosaic: True
+    use_mixup: True
+    data_type: 'voc' # 'yolo'
+    normalize_box: False
+    class_names:
+    - kiwifruit
+    - lemon
+    - cherry
+    - orange
+    
+DATALOADER:
+    batch_size: 4
+    num_workers: 2
+
+MODEL:
+    model_type: 'yolof_r18_c5_1x'
+    yolof_r18_c5_1x:
+        # Backbone
+        backbone: 'resnet18'
+        backbone_norm: 'FrozeBN'
+        res5_dilation: False
+        pretrained: True
+        pretrained_weight: 'imagenet1k_v1'
+        max_stride: 32
+        out_stride: 32
+        ## Neck
+        neck: 'dilated_encoder'
+        neck_dilations: [2, 4, 6, 8]
+        neck_expand_ratio: 0.25
+        neck_act: 'relu'
+        neck_norm: 'BN'
+        ## Head
+        head: 'yolof_head'
+        head_dim: 512
+        num_cls_head: 2
+        num_reg_head: 4
+        head_act: 'relu'
+        head_norm: 'BN'
+        center_clamp: 32         
+        anchor_size: [[32, 32], [64, 64], [128, 128], [256, 256], [512, 512]]
+
+    yolof_r50_c5_1x:
+        # Backbone
+        backbone: 'resnet50'
+        backbone_norm: 'FrozeBN'
+        res5_dilation: False
+        pretrained: True
+        pretrained_weight: 'imagenet1k_v1'
+        max_stride: 32
+        out_stride: 32
+        ## Neck
+        neck: 'dilated_encoder'
+        neck_dilations: [2, 4, 6, 8]
+        neck_expand_ratio: 0.25
+        neck_act: 'relu'
+        neck_norm: 'BN'
+        ## Head
+        head: 'yolof_head'
+        head_dim: 512
+        num_cls_head: 2
+        num_reg_head: 4
+        head_act: 'relu'
+        head_norm: 'BN'
+        center_clamp: 32         
+        anchor_size: [[32, 32], [64, 64], [128, 128], [256, 256], [512, 512]]
+    
+    yolof_r101_c5_1x:
+        # Backbone
+        backbone: 'resnet101'
+        backbone_norm: 'FrozeBN'
+        res5_dilation: False
+        pretrained: True
+        pretrained_weight: 'imagenet1k_v1'
+        max_stride: 32
+        out_stride: 32
+        ## Neck
+        neck: 'dilated_encoder'
+        neck_dilations: [2, 4, 6, 8]
+        neck_expand_ratio: 0.25
+        neck_act: 'relu'
+        neck_norm: 'BN'
+        ## Head
+        head: 'yolof_head'
+        head_dim: 512
+        num_cls_head: 2
+        num_reg_head: 4
+        head_act: 'relu'
+        head_norm: 'BN'
+        center_clamp: 32         
+        anchor_size: [[32, 32], [64, 64], [128, 128], [256, 256], [512, 512]]
+
+    yolof_r50_dc5_1x:
+        # Backbone
+        backbone: 'resnet50'
+        backbone_norm: 'FrozeBN'
+        res5_dilation: True
+        pretrained: True
+        pretrained_weight: 'imagenet1k_v1'
+        max_stride: 16
+        out_stride: 16
+        ## Neck
+        neck: 'dilated_encoder'
+        neck_dilations: [4, 8, 12, 16]
+        neck_expand_ratio: 0.25
+        neck_act: 'relu'
+        neck_norm: 'BN'
+        ## Head
+        head: 'yolof_head'
+        head_dim: 512
+        num_cls_head: 2
+        num_reg_head: 4
+        head_act: 'relu'
+        head_norm: 'BN'
+        center_clamp: 32         
+        anchor_size: [[32, 32], [64, 64], [128, 128], [256, 256], [512, 512]]
+
+    yolof_r101_dc5_1x:
+        # Backbone
+        backbone: 'resnet101'
+        backbone_norm: 'FrozeBN'
+        res5_dilation: True
+        pretrained: True
+        pretrained_weight: 'imagenet1k_v1'
+        max_stride: 16
+        out_stride: 16
+        ## Neck
+        neck: 'dilated_encoder'
+        neck_dilations: [4, 8, 12, 16]
+        neck_expand_ratio: 0.25
+        neck_act: 'relu'
+        neck_norm: 'BN'
+        ## Head
+        head: 'yolof_head'
+        head_dim: 512
+        num_cls_head: 2
+        num_reg_head: 4
+        head_act: 'relu'
+        head_norm: 'BN'
+        center_clamp: 32         
+        anchor_size: [[32, 32], [64, 64], [128, 128], [256, 256], [512, 512]]
+
+    yolof_r50v2_c5_1x:
+        # Backbone
+        backbone: 'resnet50'
+        backbone_norm: 'FrozeBN'
+        res5_dilation: False
+        pretrained: True
+        pretrained_weight: 'imagenet1k_v2'
+        max_stride: 32
+        out_stride: 32
+        ## Neck
+        neck: 'dilated_encoder'
+        neck_dilations: [2, 4, 6, 8]
+        neck_expand_ratio: 0.25
+        neck_act: 'relu'
+        neck_norm: 'BN'
+        ## Head
+        head: 'yolof_head'
+        head_dim: 512
+        num_cls_head: 2
+        num_reg_head: 4
+        head_act: 'relu'
+        head_norm: 'BN'
+        center_clamp: 32         
+        anchor_size: [[32, 32], [64, 64], [128, 128], [256, 256], [512, 512]]
+
+    yolof_r101v2_c5_1x':
+        # Backbone
+        backbone: 'resnet101'
+        backbone_norm: 'FrozeBN'
+        res5_dilation: False
+        pretrained: True
+        pretrained_weight: 'imagenet1k_v2'
+        max_stride: 32
+        out_stride: 32
+        ## Neck
+        neck: 'dilated_encoder'
+        neck_dilations: [2, 4, 6, 8]
+        neck_expand_ratio: 0.25
+        neck_act: 'relu'
+        neck_norm: 'BN'
+        ## Head
+        head: 'yolof_head'
+        head_dim: 512
+        num_cls_head: 2
+        num_reg_head: 4
+        head_act: 'relu'
+        head_norm: 'BN'
+        center_clamp: 32         
+        anchor_size: [[32, 32], [64, 64], [128, 128], [256, 256], [512, 512]]
+
+    yolof_r50v2_dc5_1x:
+        # Backbone
+        backbone: 'resnet50'
+        backbone_norm: 'FrozeBN'
+        res5_dilation: True
+        pretrained: True
+        pretrained_weight: 'imagenet1k_v2'
+        max_stride: 16
+        out_stride: 16
+        ## Neck
+        neck: 'dilated_encoder'
+        neck_dilations: [4, 8, 12, 16]
+        neck_expand_ratio: 0.25
+        neck_act: 'relu'
+        neck_norm: 'BN'
+        ## Head
+        head: 'yolof_head'
+        head_dim: 512
+        num_cls_head: 2
+        num_reg_head: 4
+        head_act: 'relu'
+        head_norm: 'BN'
+        center_clamp: 32         
+        anchor_size: [[32, 32], [64, 64], [128, 128], [256, 256], [512, 512]]
+
+    yolof_r101v2_dc5_1x:
+        # Backbone
+        backbone: 'resnet101'
+        backbone_norm: 'FrozeBN'
+        res5_dilation: True
+        pretrained: True
+        pretrained_weight: 'imagenet1k_v2'
+        max_stride: 16
+        out_stride: 16
+        ## Neck
+        neck: 'dilated_encoder'
+        neck_dilations: [4, 8, 12, 16]
+        neck_expand_ratio: 0.25
+        neck_act: 'relu'
+        neck_norm: 'BN'
+        ## Head
+        head: 'yolof_head'
+        head_dim: 512
+        num_cls_head: 2
+        num_reg_head: 4
+        head_act: 'relu'
+        head_norm: 'BN'
+        center_clamp: 32         
+        anchor_size: [[32, 32], [64, 64], [128, 128], [256, 256], [512, 512]]
+TRAIN:
+    epochs: 100
+    ignore_thresh: 0.7
+    iou_thresh: 0.1
+    topk_candidates: 8
+    loss_cls_weight: 1.0
+    loss_reg_weight: 1.0
+    focal_loss_alpha: 0.25
+    focal_loss_gamma: 2.0
+    use_gpu: True
+    use_wandb: True
+    visualize_aug: True
+    num_sample: 5
+    export_to_onnx: True
+    # base weigth
+    base_weight: 'task/objectdetection/supervised/base_weights'
+    # decode
+    topk: 100
+    conf_thresh: 0.2
+    nms_thresh: 0.25
+    no_decode: False
+
+TEST:
+    # decode
+    topk: 100
+    conf_thresh: 0.2
+    nms_thresh: 0.25
+    no_decode: True
+    is_anchor: False
+    vis_thresh: 0.3
+
+VIDEO:
+    track_thresh: 0.5
+    track_buffer: 30
+    frame_rate: 30
+    match_thresh: 0.8
+    mot20: False
+    aspect_ratio_thresh: 1.6
+    min_box_area: 10
+    is_visual_class: False
+
+OPTIMIZER:
+    adam:
+        option: True  
+        lr: 0.001     
+        weight_decay: 0.
+    adamw:
+        option: False  
+        lr: 0.001    
+        weight_decay: 0.0001
+    sgd:
+        option: False  
+        lr: 0.001
+        momentum: 0.9
+        weight_decay: 0.0005
+    sophiag:
+        option: False
+        lr: 0.0006
+        weight_decay: 0.2
+        rho: 0.05
+
+SCHEDULER:
+    use_scheduler: True
+    cosine_annealing_warmup_restarts:
+        min_lr: 0.0001
+        warmup_ratio: 0.1
+        option: False
+    step_lr:
+        option: False
+        gamma: 0.1
+    cosine_annealing_lr:
+        option: False
+    lambda_lr:
+        option: True
+        scheduler_name: 'linear'
+
+LOG:
+    log_interval: 1
+    eval_interval: 1
+
+RESULT:
+    savedir: 'saved_model'
+    saveall: 'save_all_result'
+    save_test_img: 'save_test_image'
+    saveallonnx: 'save_all_result_onnx'
+    save_test_img_onnx: 'save_test_img_onnx'
+    vis_test_dir: 'vis_test_dir'
+    save_track_camera: 'save_track_camera'
+    save_track_camera_onnx: 'save_track_camera_onnx'
+    save_track_video: 'save_track_video'
+    save_track_video_onnx: 'save_track_video_onnx'
+
+RESUME:
+    option: True
+    opset_version: 13
+    bestmodel: 'best_model.pth'
+    onnxmodel: 'best_model.onnx'

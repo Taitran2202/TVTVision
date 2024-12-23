@@ -1,0 +1,61 @@
+EXP_NAME: FAPM
+TASK: anomaly
+METHOD: unsupervised
+API_KEY: 'c1d91b9d8d01d41c563d2ed88216016fef6fdf5a' # tài khoản wandb
+SEED: 42
+
+DATASET:
+    datadir: 'datasets/anomaly/mvtec'
+    target: 'bottle'
+    mode: True
+    resize:
+      - 256 # height
+      - 256 # width
+
+DATALOADER:
+    batch_size: 1
+    num_workers: 2
+
+MODEL:
+    backbone: 'wide_resnet50_2'
+    pre_trained: True
+    layers:
+    - layer2
+    - layer3
+    sampling_ratio: 0.3
+    num_neighbors: 9
+    tile_size: 64
+    stride: 64
+    sigma: 4
+    
+TRAIN:
+    num_training_steps: 3000
+    use_gpu: True
+    use_wandb: True
+    top_k: 100
+    compute_threshold: True
+    beta: 1.0
+    visualize_aug: True
+    num_sample: 5
+    export_to_onnx: True
+
+TEST:
+    threshold_pixel: 0.5
+    threshold_image: 0.5
+
+LOG:
+    log_interval: 1
+    eval_interval: 100
+
+RESULT:
+    savedir: 'saved_model'
+    saveall: 'save_all_result'
+    save_test_img: 'save_test_image'
+    saveallonnx: 'save_all_result_onnx'
+    save_test_img_onnx: 'save_test_img_onnx'
+
+RESUME:
+    option: True
+    opset_version: 13
+    bestmodel: 'best_model.pth'
+    onnxmodel: 'best_model.onnx'

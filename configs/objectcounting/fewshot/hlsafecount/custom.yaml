@@ -1,0 +1,102 @@
+EXP_NAME: HLSAFECount
+TASK: objectcounting
+METHOD: fewshot
+API_KEY: 'c1d91b9d8d01d41c563d2ed88216016fef6fdf5a' # tài khoản wandb
+SEED: 42
+
+DATASET:
+    datadir: 'datasets/object_counting_data/few_shot'
+    target: 'custom'
+    mode: True
+    num_boxes: 6
+    resize: 
+        - 512 # height
+        - 512 # width
+    aug:
+        random_horizontal_flip:
+            option: True
+        random_translate:
+            option: True
+        random_colorjitter:
+            brightness: 0.2
+            contrast: 0.2
+            saturation: 0.2
+            hue: 0.2
+            prob: 0.5
+            option: True
+
+DATALOADER:
+    batch_size: 1
+    num_workers: 2
+
+MODEL:
+    block: 4
+    backbone: 'resnet50'
+    backbone_out_layers: [1, 2, 3]
+    backbone_out_stride: 4
+    pretrained: True
+    embed_dim: 256
+    mid_dim: 1024
+    head: 8
+    dropout: 0
+    exemplar_scales: [0.8, 1, 1.2]
+
+TRAIN:
+    epochs: 50
+    visualize_aug: True
+    num_sample: 5
+    use_gpu: True
+    use_wandb: True
+    export_to_onnx: True
+    num_train : 0.9
+
+OPTIMIZER:
+    adam:
+        option: True  
+        lr: 0.00001     
+        weight_decay: 0.0001
+    adamw:
+        option: False  
+        lr: 0.00001    
+        weight_decay: 0.0001
+    sgd:
+        option: False  
+        lr: 0.001      
+        momentum: 0.9
+        weight_decay: 0.0001
+    sophiag:
+        option: False
+        lr: 0.00001
+        weight_decay: 0.1  
+        rho: 0.03
+
+SCHEDULER:
+    use_scheduler: True
+    cosine_annealing_warmup_restarts:
+        min_lr: 0.0001
+        warmup_ratio: 0.1
+        option: False
+    step_lr:
+        option: False
+        gamma: 0.1
+    cosine_annealing_lr:
+        option: False
+    lambda_lr:
+        option: True
+        scheduler_name: 'linear'
+
+LOG:
+    log_interval: 1
+
+RESULT:
+    savedir: 'saved_model'
+    saveall: 'save_all_result'
+    save_test_img: 'save_test_image'
+    saveallonnx: 'save_all_result_onnx'
+    save_test_img_onnx: 'save_test_img_onnx'
+
+RESUME:
+    option: True
+    opset_version: 13
+    bestmodel: 'best_model.pth'
+    onnxmodel: 'best_model.onnx'

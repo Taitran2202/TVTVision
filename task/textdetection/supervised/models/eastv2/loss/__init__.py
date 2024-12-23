@@ -1,0 +1,1 @@
+from .eastv2_loss import EASTv2Loss

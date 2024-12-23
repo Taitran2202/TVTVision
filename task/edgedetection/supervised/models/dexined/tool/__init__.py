@@ -1,0 +1,1 @@
+from task.edgedetection.supervised.tool import *

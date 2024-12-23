@@ -1,0 +1,142 @@
+EXP_NAME: YOLOv1
+TASK: objectdetection
+METHOD: supervised
+API_KEY: 'c1d91b9d8d01d41c563d2ed88216016fef6fdf5a' # tài khoản wandb
+SEED: 42
+
+DATASET:
+    datadir: 'datasets/object_detection_data'
+    target: 'fruits'
+    resize: 
+        - 640 # height
+        - 640 # width
+    mode: True
+    keep_difficult: False
+    use_mosaic: True
+    use_mixup: True
+    data_type: 'voc' # 'yolo'
+    normalize_box: False
+    class_names:
+    - kiwifruit
+    - lemon
+    - cherry
+    - orange
+    
+DATALOADER:
+    batch_size: 6
+    num_workers: 2
+
+MODEL:
+    # backbone                       
+    backbone: 'resnet18'
+    pretrained: True
+    stride: [32]
+    max_stride: [32]
+    neck: 'sppf'
+    expand_ratio: 0.5
+    pooling_size: 5
+    neck_act: 'lrelu'
+    neck_norm: 'BN'
+    neck_depthwise: False
+    # head
+    head: 'decoupled_head'
+    head_act: 'lrelu'
+    head_norm: 'BN'
+    num_cls_head: 2
+    num_reg_head: 2
+    head_depthwise: False
+
+TRAIN:
+    epochs: 100
+    no_aug_epoch: 20
+    center_sampling_radius: 2.5
+    topk_candicate: 10
+    loss_cls_weight: 1.0
+    loss_obj_weight: 1.0
+    loss_box_weight: 5.0
+    use_gpu: True
+    use_wandb: True
+    visualize_aug: True
+    num_sample: 5
+    export_to_onnx: True
+    # base weigth
+    base_weight: 'task/objectdetection/supervised/base_weights'
+    # decode
+    conf_thresh: 0.2
+    nms_thresh: 0.25
+    no_decode: False
+
+TEST:
+    # decode
+    conf_thresh: 0.2
+    nms_thresh: 0.25
+    no_decode: True
+    is_anchor: False
+    vis_thresh: 0.3
+
+VIDEO:
+    track_thresh: 0.5
+    track_buffer: 30
+    frame_rate: 30
+    match_thresh: 0.8
+    mot20: False
+    aspect_ratio_thresh: 1.6
+    min_box_area: 10
+    is_visual_class: False
+
+OPTIMIZER:
+    adam:
+        option: True  
+        lr: 0.001     
+        weight_decay: 0.
+    adamw:
+        option: False  
+        lr: 0.001    
+        weight_decay: 0.0001
+    sgd:
+        option: False  
+        lr: 0.001
+        momentum: 0.9
+        weight_decay: 0.0005
+    sophiag:
+        option: False
+        lr: 0.0006
+        weight_decay: 0.2
+        rho: 0.05
+
+SCHEDULER:
+    use_scheduler: True
+    cosine_annealing_warmup_restarts:
+        min_lr: 0.0001
+        warmup_ratio: 0.1
+        option: False
+    step_lr:
+        option: False
+        gamma: 0.1
+    cosine_annealing_lr:
+        option: False
+    lambda_lr:
+        option: True
+        scheduler_name: 'linear'
+
+LOG:
+    log_interval: 1
+    eval_interval: 1
+
+RESULT:
+    savedir: 'saved_model'
+    saveall: 'save_all_result'
+    save_test_img: 'save_test_image'
+    saveallonnx: 'save_all_result_onnx'
+    save_test_img_onnx: 'save_test_img_onnx'
+    vis_test_dir: 'vis_test_dir'
+    save_track_camera: 'save_track_camera'
+    save_track_camera_onnx: 'save_track_camera_onnx'
+    save_track_video: 'save_track_video'
+    save_track_video_onnx: 'save_track_video_onnx'
+
+RESUME:
+    option: True
+    opset_version: 13
+    bestmodel: 'best_model.pth'
+    onnxmodel: 'best_model.onnx'

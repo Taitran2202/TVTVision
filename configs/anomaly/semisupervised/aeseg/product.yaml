@@ -1,0 +1,114 @@
+EXP_NAME: AESeg
+TASK: anomaly
+METHOD: semisupervised
+API_KEY: 'c1d91b9d8d01d41c563d2ed88216016fef6fdf5a' # tài khoản wandb
+SEED: 42
+
+DATASET:
+    datadir: 'datasets/anomaly/novision'
+    texture_source_dir: 'datasets/anomaly/support/dtd'
+    target: 'product'
+    mode: True
+    resize:
+      - 256 # height
+      - 256 # width
+    use_mask: true
+    bg_threshold: 250
+    bg_reverse: False
+    trans_config:
+        structure_grid_size: 8
+        transparency_range:
+        - 0.15 # under bound
+        - 1. # upper bound
+        perlin_scale: 6
+        min_perlin_scale: 0
+        perlin_noise_threshold: 0.5
+
+DATALOADER:
+    batch_size: 1
+    num_workers: 2
+
+MODEL:
+    backbone: 'resnet18'
+    use_se: True
+    use_feature_pooler: True
+    use_tiler: True
+    tiler_size: 128
+    stride: 128
+    sspcab: True
+    sspcab_lambda: 0.1
+    num_classes: 3
+
+TRAIN:
+    num_training_steps: 3000
+    l2_weight: 1.
+    ssim_weight: 1.
+    ssim_window_size: 11
+    l1_weight: 0.6
+    focal_weight: 0.4
+    focal_alpha: null
+    focal_gamma: 4
+    use_gpu: True
+    use_wandb: True
+    top_k: 100
+    compute_threshold: True
+    beta: 1.0
+    visualize_aug: True
+    num_sample: 5
+    export_to_onnx: True
+
+TEST:
+    threshold_pixel: 0.5
+    threshold_image: 0.5
+
+OPTIMIZER:
+    adam:
+        option: False  
+        lr: 0.001     
+        weight_decay: 0.
+    adamw:
+        option: True  
+        lr: 0.0001     
+        weight_decay: 0.0001
+    sgd:
+        option: False  
+        lr: 0.001      
+        momentum: 0.9
+        weight_decay: 0.0001
+    sophiag:
+        option: False
+        lr: 0.0001
+        weight_decay: 0.1  
+        rho: 0.03
+
+SCHEDULER:
+    use_scheduler: True
+    cosine_annealing_warmup_restarts:
+        min_lr: 0.00001
+        warmup_ratio: 0.1
+        option: True
+    step_lr:
+        option: False
+        gamma: 0.1
+    cosine_annealing_lr:
+        option: False
+    lambda_lr:
+        option: False
+        scheduler_name: 'linear'
+
+LOG:
+    log_interval: 1
+    eval_interval: 100
+
+RESULT:
+    savedir: 'saved_model'
+    saveall: 'save_all_result'
+    save_test_img: 'save_test_image'
+    saveallonnx: 'save_all_result_onnx'
+    save_test_img_onnx: 'save_test_img_onnx'
+
+RESUME:
+    option: True
+    opset_version: 13
+    bestmodel: 'best_model.pth'
+    onnxmodel: 'best_model.onnx'

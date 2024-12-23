@@ -1,0 +1,140 @@
+EXP_NAME: PAN
+TASK: textdetection
+METHOD: supervised
+API_KEY: 'c1d91b9d8d01d41c563d2ed88216016fef6fdf5a' # tài khoản wandb
+SEED: 42
+
+DATASET:
+    datadir: 'datasets/text_detection_data'
+    target: 'icdar17'
+    synth_folder: 'synth'
+    test_folder: 'icdar17'
+    mode: True
+    resize: 
+        - 640 # height
+        - 640 # width
+    short_size: 640
+    kernel_scale: 0.5
+    syn_aug:
+        random_scale:
+            scales: [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]
+            aspects: [0.9, 0.95, 1.0, 1.05, 1.1]
+            prob: 0.5
+            option: True
+        random_rotate:
+            max_angle: 10
+            prob: 0.5
+            option: True
+        random_horizontal_flip:
+            prob: 0.5
+            option: True
+        random_colorjitter:
+            brightness: 0.2
+            contrast: 0.2
+            saturation: 0.2
+            hue: 0.2
+            prob: 0.5
+            option: True
+    icdar_aug:
+        random_scale:
+            scales: [0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3]
+            aspects: [0.9, 0.95, 1.0, 1.05, 1.1]
+            prob: 0.6
+            option: False
+        random_rotate:
+            max_angle: 10
+            prob: 0.5
+            option: True
+        random_horizontal_flip:
+            prob: 0.5
+            option: True
+        random_colorjitter:
+            brightness: 0.2
+            contrast: 0.2
+            saturation: 0.2
+            hue: 0.2
+            prob: 0.5
+            option: True
+
+DATALOADER:
+    batch_size: 8
+    num_workers: 2
+
+MODEL:
+    backbone: 'resnet18'
+    pretrained: True
+    neck_channel: [64, 128, 256, 512]
+    pa_in_channels: 512
+    hidden_dim: 128
+    num_classes: 6
+
+TRAIN:
+    fine_tuning: True
+    weights_pretrained: 'saved_model/textdetection/supervised/icdar13/PAN-resnet18/best_model.pth'
+    epochs: 100
+    text_weight: 1.0
+    kernel_weight: 0.5
+    emb_weight: 0.25
+    visualize_aug: True
+    num_sample: 5
+    use_gpu: True
+    use_wandb: True
+    export_to_onnx: True
+
+TEST:
+    min_score: 0.85
+    min_area: 16
+    bbox_type: 'rect'
+
+OPTIMIZER:
+    adam:
+        option: True  
+        lr: 0.0001     
+        weight_decay: 0
+    adamw:
+        option: False  
+        lr: 0.001     
+        weight_decay: 0.0001
+    sgd:
+        option: False  
+        lr: 0.001      
+        momentum: 0.9
+        weight_decay: 0.0001
+    sophiag:
+        option: False
+        lr: 0.001
+        weight_decay: 0.1  
+        rho: 0.03
+
+SCHEDULER:
+    use_scheduler: True
+    cosine_annealing_warmup_restarts:
+        min_lr: 0.0001
+        warmup_ratio: 0.1
+        option: False
+    step_lr:
+        option: False
+        gamma: 0.1
+    cosine_annealing_lr:
+        option: False
+    lambda_lr:
+        option: True
+        scheduler_name: 'linear'
+
+LOG:
+    log_interval: 1
+    eval_interval: 1
+
+RESULT:
+    savedir: 'saved_model'
+    saveall: 'save_all_result'
+    save_test_img: 'save_test_image'
+    saveallonnx: 'save_all_result_onnx'
+    save_test_img_onnx: 'save_test_img_onnx'
+    vis_test_dir: 'vis_test_icdar13_dir'
+
+RESUME:
+    option: True
+    opset_version: 13
+    bestmodel: 'best_model.pth'
+    onnxmodel: 'best_model.onnx'

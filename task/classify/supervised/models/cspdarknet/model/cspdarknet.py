@@ -1,0 +1,273 @@
+import torch
+import torch.nn as nn
+import torchvision.transforms as transforms
+
+model_urls = {
+    "cspdarknet_nano": "https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/cspdarknet_nano.pth",
+    "cspdarknet_small": "https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/cspdarknet_small.pth",
+    "cspdarknet_medium": "https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/cspdarknet_medium.pth",
+    "cspdarknet_large": "https://github.com/yjh0410/image_classification_pytorch/releases/download/weight/cspdarknet_large.pth",
+    "cspdarknet_huge": None,
+}
+
+
+def get_conv2d(c1, c2, k, p, s, d, g, bias=False):
+    conv = nn.Conv2d(c1, c2, k, stride=s, padding=p,
+                     dilation=d, groups=g, bias=bias)
+
+    return conv
+
+
+def get_activation(act_type=None):
+    if act_type == 'relu':
+        return nn.ReLU(inplace=True)
+    elif act_type == 'lrelu':
+        return nn.LeakyReLU(0.1, inplace=True)
+    elif act_type == 'mish':
+        return nn.Mish(inplace=True)
+    elif act_type == 'silu':
+        return nn.SiLU(inplace=True)
+
+
+def get_norm(norm_type, dim):
+    if norm_type == 'BN':
+        return nn.BatchNorm2d(dim)
+    elif norm_type == 'GN':
+        return nn.GroupNorm(num_groups=32, num_channels=dim)
+
+
+# ---------------------------- Basic Modules ----------------------------
+# Basic conv layer
+class Conv(nn.Module):
+    def __init__(self,
+                 c1,                   # in channels
+                 c2,                   # out channels
+                 k=1,                  # kernel size
+                 p=0,                  # padding
+                 s=1,                  # padding
+                 d=1,                  # dilation
+                 act_type='',          # activation
+                 norm_type='',         # normalization
+                 depthwise=False):
+        super(Conv, self).__init__()
+        convs = []
+        add_bias = False if norm_type else True
+        if depthwise:
+            convs.append(get_conv2d(c1, c1, k=k, p=p,
+                         s=s, d=d, g=c1, bias=add_bias))
+            # depthwise conv
+            if norm_type:
+                convs.append(get_norm(norm_type, c1))
+            if act_type:
+                convs.append(get_activation(act_type))
+            # pointwise conv
+            convs.append(get_conv2d(c1, c2, k=1, p=0,
+                         s=1, d=d, g=1, bias=add_bias))
+            if norm_type:
+                convs.append(get_norm(norm_type, c2))
+            if act_type:
+                convs.append(get_activation(act_type))
+
+        else:
+            convs.append(get_conv2d(c1, c2, k=k, p=p,
+                         s=s, d=d, g=1, bias=add_bias))
+            if norm_type:
+                convs.append(get_norm(norm_type, c2))
+            if act_type:
+                convs.append(get_activation(act_type))
+
+        self.convs = nn.Sequential(*convs)
+
+    def forward(self, x):
+        return self.convs(x)
+
+
+# ConvBlocks
+class Bottleneck(nn.Module):
+    def __init__(self,
+                 in_dim,
+                 out_dim,
+                 expand_ratio=0.5,
+                 kernel=[1, 3],
+                 shortcut=False,
+                 act_type='silu',
+                 norm_type='BN',
+                 depthwise=False):
+        super(Bottleneck, self).__init__()
+        inter_dim = int(out_dim * expand_ratio)  # hidden channels
+        self.cv1 = Conv(in_dim, inter_dim, k=kernel[0], p=kernel[0]//2,
+                        norm_type=norm_type, act_type=act_type,
+                        depthwise=False if kernel[0] == 1 else depthwise)
+        self.cv2 = Conv(inter_dim, out_dim, k=kernel[1], p=kernel[1]//2,
+                        norm_type=norm_type, act_type=act_type,
+                        depthwise=False if kernel[1] == 1 else depthwise)
+        self.shortcut = shortcut and in_dim == out_dim
+
+    def forward(self, x):
+        h = self.cv2(self.cv1(x))
+
+        return x + h if self.shortcut else h
+
+
+# CSP-stage block
+class CSPBlock(nn.Module):
+    def __init__(self,
+                 in_dim,
+                 out_dim,
+                 expand_ratio=0.5,
+                 kernel=[1, 3],
+                 nblocks=1,
+                 shortcut=False,
+                 depthwise=False,
+                 act_type='silu',
+                 norm_type='BN'):
+        super(CSPBlock, self).__init__()
+        inter_dim = int(out_dim * expand_ratio)
+        self.cv1 = Conv(in_dim, inter_dim, k=1,
+                        norm_type=norm_type, act_type=act_type)
+        self.cv2 = Conv(in_dim, inter_dim, k=1,
+                        norm_type=norm_type, act_type=act_type)
+        self.cv3 = Conv(2 * inter_dim, out_dim, k=1,
+                        norm_type=norm_type, act_type=act_type)
+        self.m = nn.Sequential(*[
+            Bottleneck(inter_dim, inter_dim, expand_ratio=1.0, kernel=kernel, shortcut=shortcut,
+                       norm_type=norm_type, act_type=act_type, depthwise=depthwise)
+            for _ in range(nblocks)
+        ])
+
+    def forward(self, x):
+        x1 = self.cv1(x)
+        x2 = self.cv2(x)
+        x3 = self.m(x1)
+        out = self.cv3(torch.cat([x3, x2], dim=1))
+
+        return out
+
+
+# Spatial Pyramid Pooling - Fast (SPPF) layer for YOLOv5 by Glenn Jocher
+class SPPF(nn.Module):
+    def __init__(self, in_dim, out_dim, expand_ratio=0.5, pooling_size=5, act_type='', norm_type=''):
+        super().__init__()
+        inter_dim = int(in_dim * expand_ratio)
+        self.out_dim = out_dim
+        self.cv1 = Conv(in_dim, inter_dim, k=1,
+                        act_type=act_type, norm_type=norm_type)
+        self.cv2 = Conv(inter_dim * 4, out_dim, k=1,
+                        act_type=act_type, norm_type=norm_type)
+        self.m = nn.MaxPool2d(kernel_size=pooling_size,
+                              stride=1, padding=pooling_size // 2)
+
+    def forward(self, x):
+        x = self.cv1(x)
+        y1 = self.m(x)
+        y2 = self.m(y1)
+
+        return self.cv2(torch.cat((x, y1, y2, self.m(y2)), 1))
+
+
+# ---------------------------- CSPDarkNet ----------------------------
+# CSPDarkNet
+class CSPDarkNet(nn.Module):
+    def __init__(self, depth=1.0, width=1.0, act_type='silu', norm_type='BN', depthwise=False, num_classes=1000):
+        super(CSPDarkNet, self).__init__()
+        self.normalize = transforms.Normalize(
+            mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225))
+        self.feat_dims = [int(256*width), int(512*width), int(1024*width)]
+
+        # P1
+        self.layer_1 = Conv(3, int(64*width), k=6, p=2, s=2,
+                            act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+
+        # P2
+        self.layer_2 = nn.Sequential(
+            Conv(int(64*width), int(128*width), k=3, p=1, s=2,
+                 act_type=act_type, norm_type=norm_type, depthwise=depthwise),
+            CSPBlock(int(128*width), int(128*width), expand_ratio=0.5, nblocks=int(3*depth),
+                     shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+        )
+        # P3
+        self.layer_3 = nn.Sequential(
+            Conv(int(128*width), int(256*width), k=3, p=1, s=2,
+                 act_type=act_type, norm_type=norm_type, depthwise=depthwise),
+            CSPBlock(int(256*width), int(256*width), expand_ratio=0.5, nblocks=int(9*depth),
+                     shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+        )
+        # P4
+        self.layer_4 = nn.Sequential(
+            Conv(int(256*width), int(512*width), k=3, p=1, s=2,
+                 act_type=act_type, norm_type=norm_type, depthwise=depthwise),
+            CSPBlock(int(512*width), int(512*width), expand_ratio=0.5, nblocks=int(9*depth),
+                     shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+        )
+        # P5
+        self.layer_5 = nn.Sequential(
+            Conv(int(512*width), int(1024*width), k=3, p=1, s=2,
+                 act_type=act_type, norm_type=norm_type, depthwise=depthwise),
+            SPPF(int(1024*width), int(1024*width), expand_ratio=0.5,
+                 act_type=act_type, norm_type=norm_type),
+            CSPBlock(int(1024*width), int(1024*width), expand_ratio=0.5, nblocks=int(3*depth),
+                     shortcut=True, act_type=act_type, norm_type=norm_type, depthwise=depthwise)
+        )
+
+        self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+        self.fc = nn.Linear(int(1024*width), num_classes)
+
+    def forward(self, x):
+        x = self.normalize(x)
+        x = self.layer_1(x)
+        x = self.layer_2(x)
+        x = self.layer_3(x)
+        x = self.layer_4(x)
+        x = self.layer_5(x)
+
+        # [B, C, H, W] -> [B, C, 1, 1]
+        x = self.avgpool(x)
+        # [B, C, 1, 1] -> [B, C]
+        x = x.flatten(1)
+        x = self.fc(x)
+
+        return x
+
+
+def build_cspdarknet(model_name='large', pretrained=False, num_classes=None):
+    # P5 model
+    if model_name == 'huge':
+        model = CSPDarkNet(width=1.25, depth=1.34,
+                           act_type='silu', norm_type='BN')
+    elif model_name == 'large':
+        model = CSPDarkNet(width=1.0, depth=1.0,
+                           act_type='silu', norm_type='BN')
+    elif model_name == 'medium':
+        model = CSPDarkNet(width=0.75, depth=0.67,
+                           act_type='silu', norm_type='BN')
+    elif model_name == 'small':
+        model = CSPDarkNet(width=0.5, depth=0.34,
+                           act_type='silu', norm_type='BN')
+    elif model_name == 'nano':
+        model = CSPDarkNet(width=0.25, depth=0.34,
+                           act_type='silu', norm_type='BN')
+
+    url = model_urls['cspdarknet_' + model_name]
+
+    # load weight
+    if pretrained and url is not None:
+        checkpoint = torch.hub.load_state_dict_from_url(
+            url=url, map_location="cpu", check_hash=True)
+        # checkpoint state dict
+        checkpoint_state_dict = checkpoint.pop("model")
+        # model state dict
+        model_state_dict = model.state_dict()
+        # check
+        for k in list(checkpoint_state_dict.keys()):
+            if k in model_state_dict:
+                shape_model = tuple(model_state_dict[k].shape)
+                shape_checkpoint = tuple(checkpoint_state_dict[k].shape)
+                if shape_model != shape_checkpoint:
+                    checkpoint_state_dict.pop(k)
+            else:
+                checkpoint_state_dict.pop(k)
+
+        model.load_state_dict(checkpoint_state_dict)
+
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    return model
